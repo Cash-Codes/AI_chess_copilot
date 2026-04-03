@@ -1,0 +1,29 @@
+{
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "concurrently": "9.2.1",
+    "eslint": "10.1.0",
+    "globals": "17.4.0",
+    "prettier": "3.8.1",
+    "typescript": "6.0.2",
+    "typescript-eslint": "8.58.0"
+  },
+  "scripts": {
+    "format": "prettier . --write",
+    "format:check": "prettier . --check",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "dev:web": "npm --workspace apps/web run dev",
+    "dev:api": "npm --workspace apps/api run dev",
+    "build:web": "npm --workspace apps/web run build",
+    "build:api": "npm --workspace apps/api run build",
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\""
+  },
+  "name": "ai-chess-copilot",
+  "private": "true",
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}
