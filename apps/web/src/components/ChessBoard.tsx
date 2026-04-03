@@ -11,6 +11,9 @@ export function ChessBoard({ fen, onMove }: ChessBoardProps) {
       <Chessboard
         options={{
           position: fen,
+          // TODO: Pawn promotion silently defaults to queen. Wire up
+          // onPromotionPieceSelect (and optionally onPromotionCheck) from
+          // react-chessboard v5 to show a promotion picker dialog instead.
           onPieceDrop: ({ sourceSquare, targetSquare }) => {
             if (!targetSquare) return false;
             return onMove(sourceSquare, targetSquare);

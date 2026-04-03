@@ -26,10 +26,9 @@ function deriveState(chess: Chess): GameState {
 }
 
 export function useGameState(): UseGameState {
-  const chess = useState<Chess>(() => new Chess())[0];
-  const chessRef = useRef<Chess>(chess);
+  const chessRef = useRef<Chess>(new Chess());
 
-  const [state, setState] = useState<GameState>(() => deriveState(chess));
+  const [state, setState] = useState<GameState>(() => deriveState(new Chess()));
 
   function makeMove(from: string, to: string, promotion?: string): boolean {
     const result = chessRef.current.move({
