@@ -4,9 +4,14 @@ function App() {
   const [result, setResult] = useState<string>("");
 
   const checkApi = async () => {
-    const res = await fetch("http://localhost:3001/health");
-    const data = await res.json();
-    setResult(JSON.stringify(data));
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL ?? "http://localhost:3001"}/health`);
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      const data = await res.json();
+      setResult(JSON.stringify(data));
+    } catch (err) {
+      setResult(`Error: ${err instanceof Error ? err.message : String(err)}`);
+    }
   };
 
   return (

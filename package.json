@@ -20,7 +20,7 @@
     "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\""
   },
   "name": "ai-chess-copilot",
-  "private": "true",
+  "private": true,
   "version": "0.1.0",
   "workspaces": [
     "apps/*",
