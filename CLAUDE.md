@@ -22,6 +22,11 @@ The shared package exports its raw `.ts` source directly (no build step); both a
 
 All commands run from the repo root unless noted.
 
+**Setup (first time):**
+```
+npm install
+```
+
 **Dev (both apps concurrently):**
 ```
 npm run dev
@@ -62,4 +67,10 @@ The API uses ES modules (`"type": "module"`) with `NodeNext` module resolution â
 
 ## Environment
 
-`.env` at repo root sets `VITE_API_URL=http://localhost:3001`. The API reads `PORT` and `CORS_ORIGIN` from its environment.
+Copy `.env.example` to `.env` at the repo root before running locally. All required variables are enumerated there:
+
+```
+VITE_API_URL=http://localhost:3001   # consumed by apps/web via Vite
+PORT=3001                            # apps/api listen port
+CORS_ORIGIN=http://localhost:5173    # apps/api CORS allow-list
+```
