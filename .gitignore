@@ -1,0 +1,11 @@
+node_modules
+dist
+build
+.env
+.env.local
+.DS_Store
+coverage
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.claude/settings.local.json
