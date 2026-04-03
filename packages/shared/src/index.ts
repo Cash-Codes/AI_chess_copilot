@@ -1,12 +1,23 @@
-export type AnalyzePositionRequest = {
-  fen?: string;
-  pgn?: string;
-};
+export type CoachingMode = "balanced" | "aggressive" | "defensive";
 
-export type AnalyzePositionResponse = {
-  message: string;
-  received: {
-    fen?: string;
-    pgn?: string;
-  };
-};
+export type SideToMove = "white" | "black";
+
+export type Confidence = "low" | "medium" | "high";
+
+export interface CoachAnalyzeRequest {
+  fen: string;
+  moveHistory: string[];
+  lastOpponentMove: string;
+  sideToMove: SideToMove;
+  coachingMode: CoachingMode;
+}
+
+export interface CoachAnalyzeResponse {
+  recommendedMove: string;
+  alternativeMoves: string[];
+  summary: string;
+  reasoning: string[];
+  risks: string[];
+  confidence: Confidence;
+  style: CoachingMode;
+}
