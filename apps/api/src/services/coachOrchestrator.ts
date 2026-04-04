@@ -1,6 +1,7 @@
 import type {
   CoachAnalyzeRequest,
   CoachAnalyzeResponse,
+  Confidence,
 } from "@ai-chess-copilot/shared";
 import { generateStructuredResponse, SchemaType } from "./modelClient.js";
 import { deriveGameContext } from "./chessContext.js";
@@ -76,9 +77,66 @@ Analyze the position and give specific, practical advice for the player.
 - confidence reflects how clear-cut the recommendation is`;
 }
 
+const CONFIDENCE_VALUES: Confidence[] = ["low", "medium", "high"];
+
+function isValidOutput(
+  raw: unknown,
+): raw is Omit<CoachAnalyzeResponse, "style"> {
+  if (!raw || typeof raw !== "object") return false;
+  const r = raw as Record<string, unknown>;
+  return (
+    typeof r.recommendedMove === "string" &&
+    r.recommendedMove.length > 0 &&
+    Array.isArray(r.alternativeMoves) &&
+    typeof r.summary === "string" &&
+    r.summary.length > 0 &&
+    Array.isArray(r.reasoning) &&
+    Array.isArray(r.risks) &&
+    CONFIDENCE_VALUES.includes(r.confidence as Confidence)
+  );
+}
+
+function toSafeResponse(raw: unknown): Omit<CoachAnalyzeResponse, "style"> {
+  const r = (raw && typeof raw === "object" ? raw : {}) as Record<
+    string,
+    unknown
+  >;
+  const strings = (arr: unknown) =>
+    Array.isArray(arr)
+      ? (arr as unknown[]).filter((x): x is string => typeof x === "string")
+      : [];
+  return {
+    recommendedMove:
+      typeof r.recommendedMove === "string" && r.recommendedMove
+        ? r.recommendedMove
+        : "—",
+    alternativeMoves: strings(r.alternativeMoves),
+    summary:
+      typeof r.summary === "string" && r.summary
+        ? r.summary
+        : "Could not generate a suggestion for this position.",
+    reasoning: strings(r.reasoning),
+    risks: strings(r.risks),
+    confidence: CONFIDENCE_VALUES.includes(r.confidence as Confidence)
+      ? (r.confidence as Confidence)
+      : "low",
+  };
+}
+
+const RETRY_SUFFIX = `
+
+IMPORTANT: Your previous response did not match the required JSON schema. \
+Respond with ONLY a valid JSON object matching the schema exactly. \
+Every required field must be present and correctly typed.`;
+
 /**
- * Full orchestration path: context → prompt → model → shaped response.
- * Throws on model error — the route layer handles fallback.
+ * Full orchestration path: context → prompt → model → validated response.
+ *
+ * If the model returns a malformed object, retries once with a stronger
+ * formatting instruction. If the retry also fails, fills in safe defaults
+ * via toSafeResponse so the client always gets a usable response.
+ *
+ * Throws on hard model/network errors — the route layer handles mock fallback.
  */
 export async function orchestrateCoachResponse(
   req: CoachAnalyzeRequest,
@@ -86,10 +144,26 @@ export async function orchestrateCoachResponse(
   const context = deriveGameContext(req);
   const prompt = buildPrompt(req, context);
 
-  const raw = await generateStructuredResponse<
-    Omit<CoachAnalyzeResponse, "style">
-  >(prompt, RESPONSE_SCHEMA);
+  const raw = await generateStructuredResponse<unknown>(
+    prompt,
+    RESPONSE_SCHEMA,
+  );
 
-  // Merge style from the request — the model doesn't need to echo it back
-  return { ...raw, style: req.coachingMode };
+  if (isValidOutput(raw)) {
+    return { ...raw, style: req.coachingMode };
+  }
+
+  // Output was malformed — retry with a stronger formatting instruction.
+  let retried: unknown = raw;
+  try {
+    retried = await generateStructuredResponse<unknown>(
+      prompt + RETRY_SUFFIX,
+      RESPONSE_SCHEMA,
+    );
+  } catch {
+    // Retry failed — fall through to safe response using first attempt's output.
+  }
+
+  const body = isValidOutput(retried) ? retried : toSafeResponse(retried);
+  return { ...body, style: req.coachingMode };
 }
