@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, act, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CoachPanel } from "../../components/CoachPanel";
-import type { CoachingMode } from "../../hooks/useGameState";
+import type { CoachingMode } from "@ai-chess-copilot/shared";
 
 function renderCoachPanel(
   overrides: Partial<{
