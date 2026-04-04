@@ -45,12 +45,11 @@ export function useGameState(): UseGameState {
   const [state, setState] = useState<GameState>(() => deriveState(new Chess()));
 
   function makeMove(from: string, to: string, promotion?: string): boolean {
-    const result = chessRef.current.move({
-      from,
-      to,
-      promotion: promotion ?? "q",
-    });
-    if (result === null) return false;
+    try {
+      chessRef.current.move({ from, to, promotion: promotion ?? "q" });
+    } catch {
+      return false;
+    }
     setState(deriveState(chessRef.current));
     return true;
   }
