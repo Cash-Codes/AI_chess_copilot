@@ -101,21 +101,11 @@ describe("POST /api/coach/analyze — real model path", () => {
     expect(call.coachingMode).toBe("balanced");
   });
 
-  it("falls back to mock and returns 200 when orchestrator throws", async () => {
+  it("returns 503 when orchestrator throws", async () => {
     mockOrchestrateCoachResponse.mockRejectedValue(new Error("Model timeout"));
     const res = await request(app).post("/api/coach/analyze").send(validBody);
-    // Falls back to mock — still a valid NDJSON response
-    expect(res.status).toBe(200);
-    expect(res.headers["content-type"]).toMatch(/application\/x-ndjson/);
-  });
-
-  it("fallback response still has all required sections after model error", async () => {
-    mockOrchestrateCoachResponse.mockRejectedValue(new Error("Model timeout"));
-    const res = await request(app).post("/api/coach/analyze").send(validBody);
-    const types = parseNdjson(res.text).map((c) => c.type);
-    expect(types).toContain("move");
-    expect(types).toContain("summary");
-    expect(types).toContain("reasoning");
+    expect(res.status).toBe(503);
+    expect(typeof res.body.error).toBe("string");
   });
 });
 
