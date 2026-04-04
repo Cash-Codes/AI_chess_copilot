@@ -25,6 +25,10 @@ export function getVertexConfig(): {
 
 let _generativeModel: GenerativeModel | null = null;
 
+export function resetModelCache(): void {
+  _generativeModel = null;
+}
+
 function getCachedModel(): GenerativeModel {
   if (_generativeModel) return _generativeModel;
   const config = getVertexConfig()!;

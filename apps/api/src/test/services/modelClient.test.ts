@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { getVertexConfig } from "../../services/modelClient.js";
+import {
+  getVertexConfig,
+  resetModelCache,
+} from "../../services/modelClient.js";
 
 // generateStructuredResponse makes a real network call — test it via the
 // orchestrator integration test instead. Here we only test the pure config logic.
@@ -15,6 +18,7 @@ describe("getVertexConfig", () => {
   });
 
   afterEach(() => {
+    resetModelCache();
     // Restore original env
     Object.assign(process.env, ORIGINAL_ENV);
     // Remove keys that were not in the original
