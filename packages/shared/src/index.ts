@@ -12,6 +12,15 @@ export interface CoachAnalyzeRequest {
   coachingMode: CoachingMode;
 }
 
+export type CoachStreamChunk =
+  | { type: "move"; value: string }
+  | { type: "alternatives"; value: string[] }
+  | { type: "confidence"; value: Confidence }
+  | { type: "summary"; value: string }
+  | { type: "reasoning"; value: string[] }
+  | { type: "risks"; value: string[] }
+  | { type: "style"; value: CoachingMode };
+
 export interface CoachAnalyzeResponse {
   recommendedMove: string;
   alternativeMoves: string[];

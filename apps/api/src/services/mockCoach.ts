@@ -1,4 +1,9 @@
-import type { CoachAnalyzeRequest, CoachAnalyzeResponse } from "@ai-chess-copilot/shared";
+import type { Response } from "express";
+import type {
+  CoachAnalyzeRequest,
+  CoachAnalyzeResponse,
+  CoachStreamChunk,
+} from "@ai-chess-copilot/shared";
 
 const RESPONSES: Record<string, Pick<CoachAnalyzeResponse, "recommendedMove" | "alternativeMoves" | "summary" | "reasoning" | "risks">> = {
   balanced: {
@@ -50,4 +55,45 @@ export function buildMockResponse(req: CoachAnalyzeRequest): CoachAnalyzeRespons
     confidence: "medium",
     style: req.coachingMode,
   };
+}
+
+const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+// Section order and per-section delays (ms) control the demo pacing.
+// Swap this function's body for a real LLM call when ready.
+const SECTION_DELAYS: Record<CoachStreamChunk["type"], number> = {
+  move: 300,
+  alternatives: 250,
+  confidence: 150,
+  summary: 400,
+  reasoning: 500,
+  risks: 400,
+  style: 0,
+};
+
+export async function streamMockResponse(
+  req: CoachAnalyzeRequest,
+  res: Response,
+): Promise<void> {
+  const full = buildMockResponse(req);
+
+  const chunks: CoachStreamChunk[] = [
+    { type: "move", value: full.recommendedMove },
+    { type: "alternatives", value: full.alternativeMoves },
+    { type: "confidence", value: full.confidence },
+    { type: "summary", value: full.summary },
+    { type: "reasoning", value: full.reasoning },
+    { type: "risks", value: full.risks },
+    { type: "style", value: full.style },
+  ];
+
+  res.setHeader("Content-Type", "application/x-ndjson");
+  res.setHeader("Cache-Control", "no-cache");
+
+  for (const chunk of chunks) {
+    await delay(SECTION_DELAYS[chunk.type]);
+    res.write(JSON.stringify(chunk) + "\n");
+  }
+
+  res.end();
 }

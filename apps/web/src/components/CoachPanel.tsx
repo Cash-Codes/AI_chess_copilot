@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import type { CoachAnalyzeResponse, CoachingMode, SideToMove } from "@ai-chess-copilot/shared";
-import { analyzePosition } from "../services/coachApi";
+import type {
+  CoachAnalyzeResponse,
+  CoachingMode,
+  CoachStreamChunk,
+  SideToMove,
+} from "@ai-chess-copilot/shared";
+import { streamAnalysis } from "../services/coachApi";
 
-type CoachStatus = "idle" | "loading" | "success" | "error";
+type CoachStatus = "idle" | "streaming" | "complete" | "error";
 
 interface CoachPanelProps {
   coachingMode: CoachingMode;
@@ -12,6 +17,22 @@ interface CoachPanelProps {
   moveHistory: string[];
   sideToMove: SideToMove;
   lastOpponentMove: string | null;
+}
+
+function applyChunk(
+  prev: Partial<CoachAnalyzeResponse>,
+  chunk: CoachStreamChunk,
+): Partial<CoachAnalyzeResponse> {
+  switch (chunk.type) {
+    case "move":         return { ...prev, recommendedMove: chunk.value };
+    case "alternatives": return { ...prev, alternativeMoves: chunk.value };
+    case "confidence":   return { ...prev, confidence: chunk.value };
+    case "summary":      return { ...prev, summary: chunk.value };
+    case "reasoning":    return { ...prev, reasoning: chunk.value };
+    case "risks":        return { ...prev, risks: chunk.value };
+    case "style":        return { ...prev, style: chunk.value };
+    default:             return prev; // unknown future chunk types are ignored
+  }
 }
 
 export function CoachPanel({
@@ -24,41 +45,48 @@ export function CoachPanel({
   lastOpponentMove,
 }: CoachPanelProps) {
   const [status, setStatus] = useState<CoachStatus>("idle");
-  const [response, setResponse] = useState<CoachAnalyzeResponse | null>(null);
+  const [partial, setPartial] = useState<Partial<CoachAnalyzeResponse>>({});
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
+  // Reset when the board position changes
   useEffect(() => {
     abortRef.current?.abort();
     setStatus("idle");
-    setResponse(null);
+    setPartial({});
     setError(null);
   }, [fen]);
 
+  // Abort any in-flight request on unmount
   useEffect(() => {
     return () => abortRef.current?.abort();
   }, []);
 
-  async function handleAskCoach() {
+  function handleAskCoach() {
     if (!lastOpponentMove) return;
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
-    setStatus("loading");
+
+    setStatus("streaming");
+    setPartial({});
     setError(null);
-    try {
-      const result = await analyzePosition(
-        { fen, moveHistory, sideToMove, lastOpponentMove, coachingMode },
-        controller.signal,
-      );
-      setResponse(result);
-      setStatus("success");
-    } catch (err) {
-      if ((err as { name?: string }).name === "AbortError") return;
-      setError(err instanceof Error ? err.message : "Something went wrong. Try again.");
-      setStatus("error");
-    }
+
+    streamAnalysis(
+      { fen, moveHistory, sideToMove, lastOpponentMove, coachingMode },
+      {
+        onChunk: (chunk) => setPartial((prev) => applyChunk(prev, chunk)),
+        onComplete: () => setStatus("complete"),
+        onError: (err) => {
+          setError(err.message);
+          setStatus("error");
+        },
+      },
+      controller.signal,
+    );
   }
+
+  const isActive = status === "streaming" || status === "complete";
 
   return (
     <div className="coach-panel">
@@ -71,54 +99,63 @@ export function CoachPanel({
           </p>
         )}
 
-        {status === "loading" && (
-          <div className="coach-loading">
-            <span className="coach-spinner" aria-hidden="true" />
-            <span>Analyzing position…</span>
-          </div>
-        )}
-
-        {status === "success" && response && (
+        {isActive && (
           <div className="coach-response">
-            <div className="coach-response-header">
-              <span className="coach-move">{response.recommendedMove}</span>
-              <span
-                className={`coach-confidence coach-confidence--${response.confidence}`}
-              >
-                {response.confidence}
-              </span>
-            </div>
-
-            <p className="coach-summary">{response.summary}</p>
-
-            {response.alternativeMoves.length > 0 && (
-              <div className="coach-alts">
-                <span className="coach-alts-label">Also consider</span>
-                {response.alternativeMoves.map((m) => (
-                  <span key={m} className="coach-alt-chip">
-                    {m}
+            {partial.recommendedMove !== undefined ? (
+              <div className="coach-response-header">
+                <span className="coach-move">{partial.recommendedMove}</span>
+                {partial.confidence !== undefined && (
+                  <span
+                    className={`coach-confidence coach-confidence--${partial.confidence}`}
+                  >
+                    {partial.confidence}
                   </span>
-                ))}
+                )}
+              </div>
+            ) : (
+              <div className="coach-loading">
+                <span className="coach-spinner" aria-hidden="true" />
+                <span>Analyzing position…</span>
               </div>
             )}
 
-            <div className="coach-section">
-              <div className="coach-section-label">Reasoning</div>
-              <ul className="coach-list">
-                {response.reasoning.map((r, i) => (
-                  <li key={i}>{r}</li>
-                ))}
-              </ul>
-            </div>
+            {partial.summary !== undefined && (
+              <p className="coach-summary">{partial.summary}</p>
+            )}
 
-            <div className="coach-section">
-              <div className="coach-section-label">Risks</div>
-              <ul className="coach-list coach-list--risks">
-                {response.risks.map((r, i) => (
-                  <li key={i}>{r}</li>
-                ))}
-              </ul>
-            </div>
+            {partial.alternativeMoves !== undefined &&
+              partial.alternativeMoves.length > 0 && (
+                <div className="coach-alts">
+                  <span className="coach-alts-label">Also consider</span>
+                  {partial.alternativeMoves.map((m) => (
+                    <span key={m} className="coach-alt-chip">
+                      {m}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+            {partial.reasoning !== undefined && (
+              <div className="coach-section">
+                <div className="coach-section-label">Reasoning</div>
+                <ul className="coach-list">
+                  {partial.reasoning.map((r, i) => (
+                    <li key={i}>{r}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {partial.risks !== undefined && (
+              <div className="coach-section">
+                <div className="coach-section-label">Risks</div>
+                <ul className="coach-list coach-list--risks">
+                  {partial.risks.map((r, i) => (
+                    <li key={i}>{r}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
 
@@ -150,10 +187,10 @@ export function CoachPanel({
         </select>
         <button
           className="ask-coach-btn"
-          disabled={!canAsk || status === "loading"}
+          disabled={!canAsk || status === "streaming"}
           onClick={handleAskCoach}
         >
-          {status === "loading" ? "Thinking…" : "Ask Coach"}
+          {status === "streaming" ? "Thinking…" : "Ask Coach"}
         </button>
       </div>
     </div>
