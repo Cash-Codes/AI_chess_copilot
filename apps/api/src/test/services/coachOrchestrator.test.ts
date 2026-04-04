@@ -97,7 +97,7 @@ describe("orchestrateCoachResponse", () => {
     expect(prompt.toLowerCase()).toContain("attack");
   });
 
-  it("propagates errors thrown by generateStructuredResponse", async () => {
+  it("propagates errors thrown by generateStructuredResponse on the first call", async () => {
     mockGenerateStructuredResponse.mockRejectedValue(
       new Error("Model unavailable"),
     );
@@ -105,5 +105,83 @@ describe("orchestrateCoachResponse", () => {
     await expect(orchestrateCoachResponse(VALID_REQUEST)).rejects.toThrow(
       "Model unavailable",
     );
+  });
+
+  describe("output validation and retry", () => {
+    it("retries when the first response is missing required fields", async () => {
+      // First call returns a malformed object; second returns valid output
+      mockGenerateStructuredResponse
+        .mockResolvedValueOnce({ recommendedMove: "e5" }) // missing fields
+        .mockResolvedValueOnce(MODEL_RESPONSE);
+
+      const result = await orchestrateCoachResponse(VALID_REQUEST);
+
+      expect(mockGenerateStructuredResponse).toHaveBeenCalledTimes(2);
+      expect(result.recommendedMove).toBe("e5");
+      expect(result.confidence).toBe("high");
+    });
+
+    it("includes RETRY_SUFFIX in the second prompt", async () => {
+      mockGenerateStructuredResponse
+        .mockResolvedValueOnce({})
+        .mockResolvedValueOnce(MODEL_RESPONSE);
+
+      await orchestrateCoachResponse(VALID_REQUEST);
+
+      const [firstPrompt] = mockGenerateStructuredResponse.mock.calls[0];
+      const [secondPrompt] = mockGenerateStructuredResponse.mock.calls[1];
+      expect(secondPrompt).toContain(firstPrompt as string);
+      expect(secondPrompt).toContain("IMPORTANT");
+    });
+
+    it("returns a safe fallback when both calls return malformed output", async () => {
+      mockGenerateStructuredResponse
+        .mockResolvedValueOnce({})
+        .mockResolvedValueOnce({});
+
+      const result = await orchestrateCoachResponse(VALID_REQUEST);
+
+      expect(result.recommendedMove).toBe("—");
+      expect(result.confidence).toBe("low");
+      expect(typeof result.summary).toBe("string");
+      expect(result.summary.length).toBeGreaterThan(0);
+      expect(result.style).toBe("balanced");
+    });
+
+    it("returns safe fallback when retry throws", async () => {
+      mockGenerateStructuredResponse
+        .mockResolvedValueOnce({ recommendedMove: "Nf3" }) // malformed (missing fields)
+        .mockRejectedValueOnce(new Error("timeout"));
+
+      const result = await orchestrateCoachResponse(VALID_REQUEST);
+
+      // Should not throw — should return a safe partial response
+      expect(result.recommendedMove).toBe("Nf3"); // preserved from first call
+      expect(result.confidence).toBe("low"); // defaulted
+      expect(result.style).toBe("balanced");
+    });
+
+    it("does not retry when the first response is valid", async () => {
+      mockGenerateStructuredResponse.mockResolvedValueOnce(MODEL_RESPONSE);
+
+      await orchestrateCoachResponse(VALID_REQUEST);
+
+      expect(mockGenerateStructuredResponse).toHaveBeenCalledTimes(1);
+    });
+
+    it("preserves valid array fields in safe fallback", async () => {
+      const partial = {
+        reasoning: ["Central control is key."],
+        risks: ["White can play d4."],
+      };
+      mockGenerateStructuredResponse
+        .mockResolvedValueOnce(partial)
+        .mockResolvedValueOnce({ summary: "x" }); // emptier retry — arrays absent
+
+      const result = await orchestrateCoachResponse(VALID_REQUEST);
+
+      expect(result.reasoning).toEqual(["Central control is key."]);
+      expect(result.risks).toEqual(["White can play d4."]);
+    });
   });
 });
