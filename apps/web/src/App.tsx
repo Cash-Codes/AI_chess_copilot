@@ -28,6 +28,10 @@ function App() {
             coachingMode={coachingMode}
             onCoachingModeChange={setCoachingMode}
             canAsk={lastOpponentMove !== null}
+            fen={fen}
+            moveHistory={moveHistory}
+            sideToMove={sideToMove}
+            lastOpponentMove={lastOpponentMove}
           />
           <MoveHistory moves={moveHistory} />
           <details className="coach-context-debug">
