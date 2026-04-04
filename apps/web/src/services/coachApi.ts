@@ -46,7 +46,7 @@ export function streamAnalysis(
     const reader = res.body!.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
-    let timeoutId: ReturnType<typeof setTimeout>;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
     const resetTimeout = () => {
       clearTimeout(timeoutId);
