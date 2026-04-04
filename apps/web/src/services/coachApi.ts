@@ -25,7 +25,9 @@ export function streamAnalysis(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(req),
-        signal,
+        signal: signal
+          ? AbortSignal.any([signal, AbortSignal.timeout(TIMEOUT_MS)])
+          : AbortSignal.timeout(TIMEOUT_MS),
       });
     } catch (err) {
       if ((err as { name?: string }).name === "AbortError") return;
