@@ -29,8 +29,8 @@ export function validateCoachRequest(body: unknown): ValidationResult {
     errors.push({ field: "moveHistory", message: "moveHistory must be an array of strings." });
   }
 
-  if (typeof b.lastOpponentMove !== "string" || b.lastOpponentMove.trim() === "") {
-    errors.push({ field: "lastOpponentMove", message: "lastOpponentMove must be a non-empty string." });
+  if (b.lastOpponentMove !== undefined && b.lastOpponentMove !== null && (typeof b.lastOpponentMove !== "string" || b.lastOpponentMove.trim() === "")) {
+    errors.push({ field: "lastOpponentMove", message: "lastOpponentMove must be a non-empty string when provided." });
   }
 
   if (!SIDES.includes(b.sideToMove as SideToMove)) {
@@ -50,7 +50,7 @@ export function validateCoachRequest(body: unknown): ValidationResult {
     data: {
       fen: (b.fen as string).trim(),
       moveHistory: b.moveHistory as string[],
-      lastOpponentMove: (b.lastOpponentMove as string).trim(),
+      lastOpponentMove: b.lastOpponentMove != null ? (b.lastOpponentMove as string).trim() : null,
       sideToMove: b.sideToMove as SideToMove,
       coachingMode: b.coachingMode as CoachingMode,
     },

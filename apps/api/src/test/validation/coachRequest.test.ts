@@ -111,12 +111,12 @@ describe("validateCoachRequest", () => {
 
   // --- lastOpponentMove ---
 
-  it("returns ok:false with field 'lastOpponentMove' when lastOpponentMove is missing", () => {
+  it("returns ok:true with lastOpponentMove null when lastOpponentMove is missing", () => {
     const { lastOpponentMove: _omit, ...rest } = validBody;
     const result = validateCoachRequest(rest);
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.errors.some((e) => e.field === "lastOpponentMove")).toBe(true);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.lastOpponentMove).toBeNull();
     }
   });
 

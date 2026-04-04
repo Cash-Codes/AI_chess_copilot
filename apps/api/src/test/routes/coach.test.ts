@@ -108,13 +108,11 @@ describe("POST /api/coach/analyze", () => {
     expect(fields).toContain("moveHistory");
   });
 
-  it("returns 400 when lastOpponentMove is missing", async () => {
+  it("returns 200 when lastOpponentMove is missing (treated as null)", async () => {
     const { lastOpponentMove: _omit, ...body } = validBody;
     const res = await request(app).post("/api/coach/analyze").send(body);
 
-    expect(res.status).toBe(400);
-    const fields: string[] = res.body.details.map((e: { field: string }) => e.field);
-    expect(fields).toContain("lastOpponentMove");
+    expect(res.status).toBe(200);
   });
 
   it("returns 400 when sideToMove is an invalid enum value", async () => {

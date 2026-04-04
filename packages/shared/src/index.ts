@@ -7,7 +7,7 @@ export type Confidence = "low" | "medium" | "high";
 export interface CoachAnalyzeRequest {
   fen: string;
   moveHistory: string[];
-  lastOpponentMove: string;
+  lastOpponentMove: string | null;
   sideToMove: SideToMove;
   coachingMode: CoachingMode;
 }
