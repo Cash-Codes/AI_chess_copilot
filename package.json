@@ -17,7 +17,10 @@
     "dev:api": "npm --workspace apps/api run dev",
     "build:web": "npm --workspace apps/web run build",
     "build:api": "npm --workspace apps/api run build",
-    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\""
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
+    "test": "npm run test:web && npm run test:api",
+    "test:web": "npm --workspace apps/web run test -- --run",
+    "test:api": "npm --workspace apps/api run test -- --run"
   },
   "name": "ai-chess-copilot",
   "private": true,
