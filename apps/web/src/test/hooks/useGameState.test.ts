@@ -64,12 +64,14 @@ describe("useGameState", () => {
       expect(result.current.sideToMove).toBe("black");
     });
 
-    it("sets lastOpponentMove to the most recent move after white moves", () => {
+    it("keeps lastOpponentMove null after only the user (white) has moved", () => {
+      // The opponent is black. After white's first move black hasn't moved yet,
+      // so there is no opponent move to report.
       const { result } = renderHook(() => useGameState());
       act(() => {
         result.current.makeMove("e2", "e4");
       });
-      expect(result.current.lastOpponentMove).toBe("e4");
+      expect(result.current.lastOpponentMove).toBeNull();
     });
 
     it("switches sideToMove back to white after black moves", () => {
@@ -139,6 +141,66 @@ describe("useGameState", () => {
           result.current.makeMove("e4", "e5");
         });
       }).toThrow(/Invalid move/i);
+    });
+  });
+
+  describe("userSide", () => {
+    it("is white (the local player always controls white in V1)", () => {
+      const { result } = renderHook(() => useGameState());
+      expect(result.current.userSide).toBe("white");
+    });
+
+    it("does not change after moves", () => {
+      const { result } = renderHook(() => useGameState());
+      act(() => {
+        result.current.makeMove("e2", "e4");
+        result.current.makeMove("e7", "e5");
+      });
+      expect(result.current.userSide).toBe("white");
+    });
+  });
+
+  describe("lastOpponentMove — parity", () => {
+    it("is null until the opponent (black) has moved", () => {
+      const { result } = renderHook(() => useGameState());
+      // No moves yet
+      expect(result.current.lastOpponentMove).toBeNull();
+      // White moves — still no opponent move
+      act(() => {
+        result.current.makeMove("e2", "e4");
+      });
+      expect(result.current.lastOpponentMove).toBeNull();
+    });
+
+    it("reflects black's move after the first full exchange", () => {
+      const { result } = renderHook(() => useGameState());
+      act(() => {
+        result.current.makeMove("e2", "e4"); // white
+        result.current.makeMove("e7", "e5"); // black (opponent)
+      });
+      expect(result.current.lastOpponentMove).toBe("e5");
+    });
+
+    it("does not update lastOpponentMove when white moves again", () => {
+      // After e4 e5 Nf3: black's last move is still e5, not Nf3.
+      const { result } = renderHook(() => useGameState());
+      act(() => {
+        result.current.makeMove("e2", "e4"); // white
+        result.current.makeMove("e7", "e5"); // black
+        result.current.makeMove("g1", "f3"); // white again
+      });
+      expect(result.current.lastOpponentMove).toBe("e5");
+    });
+
+    it("advances to black's latest move after a second full exchange", () => {
+      const { result } = renderHook(() => useGameState());
+      act(() => {
+        result.current.makeMove("e2", "e4"); // white
+        result.current.makeMove("e7", "e5"); // black
+        result.current.makeMove("g1", "f3"); // white
+        result.current.makeMove("b8", "c6"); // black
+      });
+      expect(result.current.lastOpponentMove).toBe("Nc6");
     });
   });
 
