@@ -1,5 +1,5 @@
 import { VertexAI, SchemaType } from "@google-cloud/vertexai";
-import type { Schema } from "@google-cloud/vertexai";
+import type { Schema, GenerativeModel } from "@google-cloud/vertexai";
 
 export { SchemaType };
 export type { Schema };
@@ -19,8 +19,21 @@ export function getVertexConfig(): {
   return {
     project,
     location: process.env.VERTEX_LOCATION ?? "us-central1",
-    model: process.env.VERTEX_MODEL ?? "gemini-2.0-flash-001",
+    model: process.env.VERTEX_MODEL ?? "gemini-2.5-flash",
   };
+}
+
+let _generativeModel: GenerativeModel | null = null;
+
+function getCachedModel(): GenerativeModel {
+  if (_generativeModel) return _generativeModel;
+  const config = getVertexConfig()!;
+  const vertexAI = new VertexAI({
+    project: config.project,
+    location: config.location,
+  });
+  _generativeModel = vertexAI.getGenerativeModel({ model: config.model });
+  return _generativeModel;
 }
 
 /**
@@ -37,21 +50,12 @@ export async function generateStructuredResponse<T>(
   const config = getVertexConfig();
   if (!config) throw new Error("VERTEX_PROJECT is not configured.");
 
-  const vertexAI = new VertexAI({
-    project: config.project,
-    location: config.location,
-  });
-
-  const generativeModel = vertexAI.getGenerativeModel({
-    model: config.model,
+  const result = await getCachedModel().generateContent({
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
     generationConfig: {
       responseMimeType: "application/json",
       responseSchema: schema,
     },
-  });
-
-  const result = await generativeModel.generateContent({
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
   });
 
   const text = result.response.candidates?.[0]?.content?.parts?.[0]?.text ?? "";

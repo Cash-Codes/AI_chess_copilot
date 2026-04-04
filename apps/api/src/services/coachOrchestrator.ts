@@ -64,7 +64,7 @@ function buildPrompt(req: CoachAnalyzeRequest, context: string): string {
 ${context}
 
 ## Coaching style
-${STYLE_INSTRUCTIONS[req.coachingMode]}
+${STYLE_INSTRUCTIONS[req.coachingMode] ?? STYLE_INSTRUCTIONS["balanced"]}
 
 ## Instructions
 Analyze the position and give specific, practical advice for the player.

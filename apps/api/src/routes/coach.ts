@@ -22,13 +22,15 @@ coachRouter.post("/analyze", async (req, res) => {
 
   // Use the real model when VERTEX_PROJECT is configured; otherwise use mock.
   if (getVertexConfig()) {
+    let response = null;
     try {
-      const response = await orchestrateCoachResponse(result.data);
-      await streamResponseAsNdjson(response, res);
-      return;
+      response = await orchestrateCoachResponse(result.data);
     } catch (err) {
       console.error("[coach] Model error, falling back to mock:", err);
-      // Fall through to mock below
+    }
+    if (response) {
+      await streamResponseAsNdjson(response, res);
+      return;
     }
   }
 
