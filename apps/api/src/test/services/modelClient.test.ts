@@ -52,10 +52,10 @@ describe("getVertexConfig", () => {
     expect(config?.location).toBe("europe-west4");
   });
 
-  it("uses default model 'gemini-2.0-flash-001' when VERTEX_MODEL is not set", () => {
+  it("uses default model 'gemini-2.5-flash' when VERTEX_MODEL is not set", () => {
     process.env.VERTEX_PROJECT = "my-gcp-project";
     const config = getVertexConfig();
-    expect(config?.model).toBe("gemini-2.0-flash-001");
+    expect(config?.model).toBe("gemini-2.5-flash");
   });
 
   it("uses VERTEX_MODEL when provided", () => {

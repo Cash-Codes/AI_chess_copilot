@@ -21,8 +21,8 @@
     "build:api": "npm --workspace apps/api run build",
     "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
     "test": "npm run test:web && npm run test:api",
-    "test:web": "npm --workspace apps/web run test -- --run",
-    "test:api": "npm --workspace apps/api run test -- --run",
+    "test:web": "npm --workspace apps/web run test",
+    "test:api": "npm --workspace apps/api run test",
     "prepare": "husky"
   },
   "name": "ai-chess-copilot",
