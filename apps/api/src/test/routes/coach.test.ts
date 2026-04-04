@@ -1,7 +1,43 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import request from "supertest";
 import { app } from "../../app.js";
-import type { CoachStreamChunk } from "@ai-chess-copilot/shared";
+import type {
+  CoachStreamChunk,
+  CoachAnalyzeResponse,
+} from "@ai-chess-copilot/shared";
+
+// We mock at the module level so we can swap real-model vs mock behaviour per test.
+vi.mock("../../services/modelClient.js", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../services/modelClient.js")>();
+  return { ...actual, getVertexConfig: vi.fn() };
+});
+
+vi.mock("../../services/coachOrchestrator.js", () => ({
+  orchestrateCoachResponse: vi.fn(),
+}));
+
+import { getVertexConfig } from "../../services/modelClient.js";
+import { orchestrateCoachResponse } from "../../services/coachOrchestrator.js";
+
+const mockGetVertexConfig = vi.mocked(getVertexConfig);
+const mockOrchestrateCoachResponse = vi.mocked(orchestrateCoachResponse);
+
+const MOCK_VERTEX_CONFIG = {
+  project: "test-project",
+  location: "us-central1",
+  model: "gemini-2.0-flash-001",
+};
+
+const MODEL_RESPONSE: CoachAnalyzeResponse = {
+  recommendedMove: "Nf3",
+  alternativeMoves: ["d4", "Bc4"],
+  summary: "Develop the knight to a natural square.",
+  reasoning: ["Controls central squares.", "Prepares castling."],
+  risks: ["Black may play ...d5."],
+  confidence: "high",
+  style: "balanced",
+};
 
 const validBody = {
   fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
@@ -27,8 +63,64 @@ function assembleChunks(chunks: CoachStreamChunk[]): Record<string, unknown> {
   return out;
 }
 
+beforeEach(() => {
+  vi.clearAllMocks();
+  // Default: no vertex config → use mock
+  mockGetVertexConfig.mockReturnValue(null);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe("POST /api/coach/analyze — real model path", () => {
+  beforeEach(() => {
+    mockGetVertexConfig.mockReturnValue(MOCK_VERTEX_CONFIG);
+    mockOrchestrateCoachResponse.mockResolvedValue(MODEL_RESPONSE);
+  });
+
+  it("returns 200 NDJSON when orchestrator succeeds", async () => {
+    const res = await request(app).post("/api/coach/analyze").send(validBody);
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toMatch(/application\/x-ndjson/);
+  });
+
+  it("streams the orchestrator response as NDJSON chunks", async () => {
+    const res = await request(app).post("/api/coach/analyze").send(validBody);
+    const assembled = assembleChunks(parseNdjson(res.text));
+    expect(assembled.move).toBe("Nf3");
+    expect(assembled.confidence).toBe("high");
+    expect(assembled.style).toBe("balanced");
+  });
+
+  it("calls orchestrateCoachResponse with the validated request data", async () => {
+    await request(app).post("/api/coach/analyze").send(validBody);
+    expect(mockOrchestrateCoachResponse).toHaveBeenCalledOnce();
+    const call = mockOrchestrateCoachResponse.mock.calls[0][0];
+    expect(call.fen).toBe(validBody.fen);
+    expect(call.coachingMode).toBe("balanced");
+  });
+
+  it("falls back to mock and returns 200 when orchestrator throws", async () => {
+    mockOrchestrateCoachResponse.mockRejectedValue(new Error("Model timeout"));
+    const res = await request(app).post("/api/coach/analyze").send(validBody);
+    // Falls back to mock — still a valid NDJSON response
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toMatch(/application\/x-ndjson/);
+  });
+
+  it("fallback response still has all required sections after model error", async () => {
+    mockOrchestrateCoachResponse.mockRejectedValue(new Error("Model timeout"));
+    const res = await request(app).post("/api/coach/analyze").send(validBody);
+    const types = parseNdjson(res.text).map((c) => c.type);
+    expect(types).toContain("move");
+    expect(types).toContain("summary");
+    expect(types).toContain("reasoning");
+  });
+});
+
 describe("POST /api/coach/analyze", () => {
-  // --- 200 NDJSON streaming success cases ---
+  // --- 200 NDJSON streaming success cases (mock path, no vertex config) ---
 
   it("returns 200 with content-type application/x-ndjson for a valid body", async () => {
     const res = await request(app).post("/api/coach/analyze").send(validBody);
@@ -52,7 +144,15 @@ describe("POST /api/coach/analyze", () => {
   it("emits sections in the expected order", async () => {
     const res = await request(app).post("/api/coach/analyze").send(validBody);
     const types = parseNdjson(res.text).map((c) => c.type);
-    expect(types).toEqual(["move", "alternatives", "confidence", "summary", "reasoning", "risks", "style"]);
+    expect(types).toEqual([
+      "move",
+      "alternatives",
+      "confidence",
+      "summary",
+      "reasoning",
+      "risks",
+      "style",
+    ]);
   });
 
   it("assembled chunks match full CoachAnalyzeResponse shape for balanced mode", async () => {
@@ -101,7 +201,9 @@ describe("POST /api/coach/analyze", () => {
   });
 
   it("returns 200 when lastOpponentMove is missing (treated as null)", async () => {
-    const { lastOpponentMove: _omit, ...body } = validBody;
+    const body = Object.fromEntries(
+      Object.entries(validBody).filter(([k]) => k !== "lastOpponentMove"),
+    );
     const res = await request(app).post("/api/coach/analyze").send(body);
     expect(res.status).toBe(200);
   });
@@ -116,38 +218,58 @@ describe("POST /api/coach/analyze", () => {
   });
 
   it("returns 400 when fen is missing, with 'fen' in details", async () => {
-    const { fen: _omit, ...body } = validBody;
+    const body = Object.fromEntries(
+      Object.entries(validBody).filter(([k]) => k !== "fen"),
+    );
     const res = await request(app).post("/api/coach/analyze").send(body);
     expect(res.status).toBe(400);
-    const fields: string[] = res.body.details.map((e: { field: string }) => e.field);
+    const fields: string[] = res.body.details.map(
+      (e: { field: string }) => e.field,
+    );
     expect(fields).toContain("fen");
   });
 
   it("returns 400 when fen is an empty string", async () => {
-    const res = await request(app).post("/api/coach/analyze").send({ ...validBody, fen: "" });
+    const res = await request(app)
+      .post("/api/coach/analyze")
+      .send({ ...validBody, fen: "" });
     expect(res.status).toBe(400);
-    const fields: string[] = res.body.details.map((e: { field: string }) => e.field);
+    const fields: string[] = res.body.details.map(
+      (e: { field: string }) => e.field,
+    );
     expect(fields).toContain("fen");
   });
 
   it("returns 400 when moveHistory is not an array", async () => {
-    const res = await request(app).post("/api/coach/analyze").send({ ...validBody, moveHistory: "e4 e5" });
+    const res = await request(app)
+      .post("/api/coach/analyze")
+      .send({ ...validBody, moveHistory: "e4 e5" });
     expect(res.status).toBe(400);
-    const fields: string[] = res.body.details.map((e: { field: string }) => e.field);
+    const fields: string[] = res.body.details.map(
+      (e: { field: string }) => e.field,
+    );
     expect(fields).toContain("moveHistory");
   });
 
   it("returns 400 when sideToMove is an invalid enum value", async () => {
-    const res = await request(app).post("/api/coach/analyze").send({ ...validBody, sideToMove: "purple" });
+    const res = await request(app)
+      .post("/api/coach/analyze")
+      .send({ ...validBody, sideToMove: "purple" });
     expect(res.status).toBe(400);
-    const fields: string[] = res.body.details.map((e: { field: string }) => e.field);
+    const fields: string[] = res.body.details.map(
+      (e: { field: string }) => e.field,
+    );
     expect(fields).toContain("sideToMove");
   });
 
   it("returns 400 when coachingMode is an invalid enum value", async () => {
-    const res = await request(app).post("/api/coach/analyze").send({ ...validBody, coachingMode: "chaotic" });
+    const res = await request(app)
+      .post("/api/coach/analyze")
+      .send({ ...validBody, coachingMode: "chaotic" });
     expect(res.status).toBe(400);
-    const fields: string[] = res.body.details.map((e: { field: string }) => e.field);
+    const fields: string[] = res.body.details.map(
+      (e: { field: string }) => e.field,
+    );
     expect(fields).toContain("coachingMode");
   });
 
@@ -160,7 +282,9 @@ describe("POST /api/coach/analyze", () => {
   });
 
   it("includes both 'error' string and 'details' array in 400 responses", async () => {
-    const res = await request(app).post("/api/coach/analyze").send({ ...validBody, coachingMode: "unknown" });
+    const res = await request(app)
+      .post("/api/coach/analyze")
+      .send({ ...validBody, coachingMode: "unknown" });
     expect(res.status).toBe(400);
     expect(typeof res.body.error).toBe("string");
     expect(Array.isArray(res.body.details)).toBe(true);

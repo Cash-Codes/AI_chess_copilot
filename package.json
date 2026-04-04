@@ -4,6 +4,8 @@
     "concurrently": "9.2.1",
     "eslint": "10.1.0",
     "globals": "17.4.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "prettier": "3.8.1",
     "typescript": "6.0.2",
     "typescript-eslint": "8.58.0"
@@ -20,7 +22,8 @@
     "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
     "test": "npm run test:web && npm run test:api",
     "test:web": "npm --workspace apps/web run test -- --run",
-    "test:api": "npm --workspace apps/api run test -- --run"
+    "test:api": "npm --workspace apps/api run test -- --run",
+    "prepare": "husky"
   },
   "name": "ai-chess-copilot",
   "private": true,
@@ -28,5 +31,14 @@
   "workspaces": [
     "apps/*",
     "packages/*"
-  ]
+  ],
+  "lint-staged": {
+    "**/*.{ts,tsx}": [
+      "eslint --max-warnings=0",
+      "prettier --check"
+    ],
+    "**/*.{json,md,css}": [
+      "prettier --check"
+    ]
+  }
 }
