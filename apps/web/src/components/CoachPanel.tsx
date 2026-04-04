@@ -119,7 +119,16 @@ export function CoachPanel({
         <select
           className="mode-select"
           value={coachingMode}
-          onChange={(e) => onCoachingModeChange(e.target.value as CoachingMode)}
+          onChange={(e) => {
+            const val = e.target.value;
+            if (
+              val === "balanced" ||
+              val === "aggressive" ||
+              val === "defensive"
+            ) {
+              onCoachingModeChange(val);
+            }
+          }}
         >
           <option value="balanced">balanced</option>
           <option value="aggressive">aggressive</option>
