@@ -176,7 +176,7 @@ describe("orchestrateCoachResponse", () => {
       };
       mockGenerateStructuredResponse
         .mockResolvedValueOnce(partial)
-        .mockResolvedValueOnce(partial);
+        .mockResolvedValueOnce({ summary: "x" }); // emptier retry — arrays absent
 
       const result = await orchestrateCoachResponse(VALID_REQUEST);
 

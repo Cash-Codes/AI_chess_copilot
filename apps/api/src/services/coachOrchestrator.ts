@@ -84,14 +84,17 @@ function isValidOutput(
 ): raw is Omit<CoachAnalyzeResponse, "style"> {
   if (!raw || typeof raw !== "object") return false;
   const r = raw as Record<string, unknown>;
+  const isStringArray = (arr: unknown) =>
+    Array.isArray(arr) &&
+    (arr as unknown[]).every((x) => typeof x === "string");
   return (
     typeof r.recommendedMove === "string" &&
     r.recommendedMove.length > 0 &&
-    Array.isArray(r.alternativeMoves) &&
+    isStringArray(r.alternativeMoves) &&
     typeof r.summary === "string" &&
     r.summary.length > 0 &&
-    Array.isArray(r.reasoning) &&
-    Array.isArray(r.risks) &&
+    isStringArray(r.reasoning) &&
+    isStringArray(r.risks) &&
     CONFIDENCE_VALUES.includes(r.confidence as Confidence)
   );
 }
@@ -164,6 +167,6 @@ export async function orchestrateCoachResponse(
     // Retry failed — fall through to safe response using first attempt's output.
   }
 
-  const body = isValidOutput(retried) ? retried : toSafeResponse(retried);
+  const body = isValidOutput(retried) ? retried : toSafeResponse(raw);
   return { ...body, style: req.coachingMode };
 }
