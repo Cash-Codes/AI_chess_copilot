@@ -70,15 +70,52 @@ Coaching modes: `balanced` | `aggressive` | `defensive` — influence prompt sty
 
 ## Setup
 
+### 1. Install dependencies
+
 ```bash
-# 1. Install dependencies
 npm install
+```
 
-# 2. Configure environment
+### 2. Authenticate with Google Cloud
+
+The API uses Vertex AI (Gemini) via [Application Default Credentials (ADC)](https://cloud.google.com/docs/authentication/application-default-credentials). You need the `gcloud` CLI installed and a GCP project with the Vertex AI API enabled.
+
+```bash
+# Install gcloud CLI (if not already installed)
+# https://cloud.google.com/sdk/docs/install
+
+# Log in and set up ADC
+gcloud auth login
+gcloud auth application-default login
+
+# Set your active project
+gcloud config set project YOUR_GCP_PROJECT_ID
+
+# Enable the Vertex AI API on your project (one-time)
+gcloud services enable aiplatform.googleapis.com
+```
+
+ADC means no API key file is needed locally — the SDK picks up your credentials automatically.
+
+### 3. Configure environment
+
+```bash
 cp .env.example .env
-# Edit .env and add your ANTHROPIC_API_KEY
+```
 
-# 3. Run both apps
+Edit `.env` and set `VERTEX_PROJECT` to your GCP project ID:
+
+```
+VERTEX_PROJECT=your-gcp-project-id   # required to enable real model calls
+VERTEX_LOCATION=us-central1          # optional, defaults to us-central1
+VERTEX_MODEL=gemini-2.0-flash-001    # optional, defaults to gemini-2.0-flash-001
+```
+
+**Without `VERTEX_PROJECT`** the API falls back to mock responses — no GCP account needed for local frontend development.
+
+### 4. Run both apps
+
+```bash
 npm run dev
 ```
 
@@ -106,12 +143,16 @@ Both test suites run in parallel on every pull request via GitHub Actions (see `
 
 ## Environment variables
 
-| Variable            | Description                                                |
-| ------------------- | ---------------------------------------------------------- |
-| `VITE_API_URL`      | Backend URL (default: `http://localhost:3001`)             |
-| `PORT`              | API listen port (default: `3001`)                          |
-| `CORS_ORIGIN`       | Allowed frontend origin (default: `http://localhost:5173`) |
-| `ANTHROPIC_API_KEY` | Required — Claude API key                                  |
+| Variable          | Default                 | Description                                           |
+| ----------------- | ----------------------- | ----------------------------------------------------- |
+| `VITE_API_URL`    | `http://localhost:3001` | Backend URL consumed by the frontend via Vite         |
+| `PORT`            | `3001`                  | API listen port                                       |
+| `CORS_ORIGIN`     | `http://localhost:5173` | Allowed frontend origin for CORS                      |
+| `VERTEX_PROJECT`  | —                       | GCP project ID — **required** to enable real AI calls |
+| `VERTEX_LOCATION` | `us-central1`           | GCP region for Vertex AI                              |
+| `VERTEX_MODEL`    | `gemini-2.0-flash-001`  | Gemini model ID                                       |
+
+Authentication is handled by [ADC](https://cloud.google.com/docs/authentication/application-default-credentials) — run `gcloud auth application-default login` once. No API key file required.
 
 ## V1 trade-offs
 
