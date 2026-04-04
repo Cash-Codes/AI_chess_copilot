@@ -15,6 +15,7 @@ const analyzeLimiter = rateLimit({
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === "test",
   message: { error: "Too many requests. Please wait a moment and try again." },
 });
 
