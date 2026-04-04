@@ -246,13 +246,16 @@ describe("CoachPanel", () => {
       await user.click(screen.getByRole("button", { name: "Ask Coach" }));
       await waitFor(() => screen.getByText("Nf3"));
 
-      expect(mockAnalyzePosition).toHaveBeenCalledWith({
-        fen,
-        moveHistory,
-        sideToMove: "white",
-        lastOpponentMove: "e5",
-        coachingMode: "aggressive",
-      });
+      expect(mockAnalyzePosition).toHaveBeenCalledWith(
+        {
+          fen,
+          moveHistory,
+          sideToMove: "white",
+          lastOpponentMove: "e5",
+          coachingMode: "aggressive",
+        },
+        expect.any(AbortSignal),
+      );
     });
   });
 
