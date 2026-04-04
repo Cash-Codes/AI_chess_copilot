@@ -103,44 +103,42 @@ describe("useGameState", () => {
     });
   });
 
-  // NOTE: chess.js v1 throws an Error for illegal moves rather than returning
-  // null. Because useGameState does not catch that error, calling makeMove with
-  // an illegal move propagates the thrown Error to the caller.
   describe("makeMove — invalid moves", () => {
-    it("throws for a move from an empty square", () => {
+    it("returns false for a move from an empty square", () => {
       const { result } = renderHook(() => useGameState());
-      expect(() => {
-        act(() => {
-          result.current.makeMove("e4", "e5");
-        });
-      }).toThrow();
+      let returned: boolean;
+      act(() => {
+        returned = result.current.makeMove("e4", "e5");
+      });
+      expect(returned!).toBe(false);
     });
 
-    it("throws for an out-of-turn move (black piece on white's turn)", () => {
+    it("returns false for an out-of-turn move (black piece on white's turn)", () => {
       const { result } = renderHook(() => useGameState());
-      expect(() => {
-        act(() => {
-          result.current.makeMove("e7", "e5");
-        });
-      }).toThrow();
+      let returned: boolean;
+      act(() => {
+        returned = result.current.makeMove("e7", "e5");
+      });
+      expect(returned!).toBe(false);
     });
 
-    it("throws for a completely nonsensical square", () => {
+    it("returns false for a completely nonsensical square", () => {
       const { result } = renderHook(() => useGameState());
-      expect(() => {
-        act(() => {
-          result.current.makeMove("z9", "z10");
-        });
-      }).toThrow();
+      let returned: boolean;
+      act(() => {
+        returned = result.current.makeMove("z9", "z10");
+      });
+      expect(returned!).toBe(false);
     });
 
-    it("throws with an 'Invalid move' message for an illegal move", () => {
+    it("does not change state after an invalid move", () => {
       const { result } = renderHook(() => useGameState());
-      expect(() => {
-        act(() => {
-          result.current.makeMove("e4", "e5");
-        });
-      }).toThrow(/Invalid move/i);
+      const fenBefore = result.current.fen;
+      act(() => {
+        result.current.makeMove("e4", "e5");
+      });
+      expect(result.current.fen).toBe(fenBefore);
+      expect(result.current.moveHistory).toHaveLength(0);
     });
   });
 
