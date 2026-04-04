@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CoachAnalyzeResponse, CoachingMode, SideToMove } from "@ai-chess-copilot/shared";
 import { analyzePosition } from "../services/coachApi";
 
@@ -26,22 +26,35 @@ export function CoachPanel({
   const [status, setStatus] = useState<CoachStatus>("idle");
   const [response, setResponse] = useState<CoachAnalyzeResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    abortRef.current?.abort();
+    setStatus("idle");
+    setResponse(null);
+    setError(null);
+  }, [fen]);
+
+  useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
 
   async function handleAskCoach() {
     if (!lastOpponentMove) return;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setStatus("loading");
     setError(null);
     try {
-      const result = await analyzePosition({
-        fen,
-        moveHistory,
-        sideToMove,
-        lastOpponentMove,
-        coachingMode,
-      });
+      const result = await analyzePosition(
+        { fen, moveHistory, sideToMove, lastOpponentMove, coachingMode },
+        controller.signal,
+      );
       setResponse(result);
       setStatus("success");
     } catch (err) {
+      if ((err as { name?: string }).name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Something went wrong. Try again.");
       setStatus("error");
     }
