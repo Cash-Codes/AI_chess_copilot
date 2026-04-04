@@ -25,6 +25,7 @@ function App() {
         </section>
         <aside className="side-panel">
           <CoachPanel
+            key={fen}
             coachingMode={coachingMode}
             onCoachingModeChange={setCoachingMode}
             canAsk={lastOpponentMove !== null}
