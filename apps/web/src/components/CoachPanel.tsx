@@ -1,49 +1,50 @@
 import { useState } from "react";
-import type { CoachAnalyzeResponse, CoachingMode } from "@ai-chess-copilot/shared";
+import type { CoachAnalyzeResponse, CoachingMode, SideToMove } from "@ai-chess-copilot/shared";
+import { analyzePosition } from "../services/coachApi";
 
 type CoachStatus = "idle" | "loading" | "success" | "error";
-
-const MOCK_RESPONSE: CoachAnalyzeResponse = {
-  recommendedMove: "Nf3",
-  alternativeMoves: ["Bc4", "d4"],
-  summary:
-    "Develop a knight toward the center while keeping all options open for the middlegame.",
-  reasoning: [
-    "Nf3 develops naturally and prepares short castling.",
-    "The knight controls key squares d4 and e5.",
-    "Keeps flexibility — you can follow with Bc4, d4, or e5 depending on Black's response.",
-  ],
-  risks: [
-    "Avoid premature pawn advances before completing development.",
-    "Watch for ...Bc5, which may pressure f2.",
-  ],
-  confidence: "medium",
-  style: "balanced",
-};
 
 interface CoachPanelProps {
   coachingMode: CoachingMode;
   onCoachingModeChange: (mode: CoachingMode) => void;
   canAsk: boolean;
+  fen: string;
+  moveHistory: string[];
+  sideToMove: SideToMove;
+  lastOpponentMove: string | null;
 }
 
 export function CoachPanel({
   coachingMode,
   onCoachingModeChange,
   canAsk,
+  fen,
+  moveHistory,
+  sideToMove,
+  lastOpponentMove,
 }: CoachPanelProps) {
   const [status, setStatus] = useState<CoachStatus>("idle");
   const [response, setResponse] = useState<CoachAnalyzeResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  function handleAskCoach() {
+  async function handleAskCoach() {
+    if (!lastOpponentMove) return;
     setStatus("loading");
     setError(null);
-    // Simulate async backend call — replace with real fetch in V2
-    setTimeout(() => {
-      setResponse({ ...MOCK_RESPONSE, style: coachingMode });
+    try {
+      const result = await analyzePosition({
+        fen,
+        moveHistory,
+        sideToMove,
+        lastOpponentMove,
+        coachingMode,
+      });
+      setResponse(result);
       setStatus("success");
-    }, 1200);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Try again.");
+      setStatus("error");
+    }
   }
 
   return (
