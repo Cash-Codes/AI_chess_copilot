@@ -87,17 +87,22 @@ API: http://localhost:3001
 
 ## Testing
 
-Tests live in `apps/web/src/test/` and use [Vitest](https://vitest.dev/) + [React Testing Library](https://testing-library.com/).
+Tests use [Vitest](https://vitest.dev/) across both apps.
 
 ```bash
-# Run tests once
-npm run test --workspace=apps/web
+# Run all tests (web + api)
+npm test
 
-# Watch mode (re-runs on file changes)
-npm run test:watch --workspace=apps/web
+# Run individually
+npm run test:web
+npm run test:api
+
+# Watch mode
+npm --workspace apps/web run test:watch
+npm --workspace apps/api run test:watch
 ```
 
-Tests run automatically on every pull request via GitHub Actions (see `.github/workflows/ci.yml`).
+Both test suites run in parallel on every pull request via GitHub Actions (see `.github/workflows/ci.yml`).
 
 ## Environment variables
 
