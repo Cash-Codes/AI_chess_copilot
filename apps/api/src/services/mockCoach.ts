@@ -91,6 +91,7 @@ export async function streamMockResponse(
   res.setHeader("Cache-Control", "no-cache");
 
   for (const chunk of chunks) {
+    if (res.writableEnded) break;
     await delay(SECTION_DELAYS[chunk.type]);
     res.write(JSON.stringify(chunk) + "\n");
   }

@@ -5,7 +5,6 @@ import { CoachPanel } from "../../components/CoachPanel";
 import type { CoachAnalyzeRequest, CoachingMode, CoachStreamChunk } from "@ai-chess-copilot/shared";
 
 vi.mock("../../services/coachApi", () => ({
-  analyzePosition: vi.fn(),
   streamAnalysis: vi.fn(),
 }));
 
@@ -113,6 +112,11 @@ describe("CoachPanel", () => {
     it("enables Ask Coach when canAsk is true", () => {
       renderCoachPanel({ canAsk: true, lastOpponentMove: "e5" });
       expect(screen.getByRole("button", { name: "Ask Coach" })).toBeEnabled();
+    });
+
+    it("disables Ask Coach when canAsk is true but lastOpponentMove is null", () => {
+      renderCoachPanel({ canAsk: true, lastOpponentMove: null });
+      expect(screen.getByRole("button", { name: "Ask Coach" })).toBeDisabled();
     });
   });
 
