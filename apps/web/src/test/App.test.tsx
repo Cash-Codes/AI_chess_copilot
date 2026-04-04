@@ -127,8 +127,8 @@ describe("App", () => {
   // CoachPanel has no internal fen-based reset — the reset relies entirely on
   // React remounting it when the key changes. If that key assignment is ever
   // removed, the panel will stay in its previous state after a new move.
-  describe("CoachPanel resets after a new move (key={fen} regression guard)", () => {
-    it("shows idle text after making a new move following a completed analysis", async () => {
+  describe("CoachPanel persists analysis across moves", () => {
+    it("keeps the previous analysis visible after a new move is made", async () => {
       const ALL_CHUNKS: CoachStreamChunk[] = [
         { type: "move", value: "Nf3" },
         { type: "confidence", value: "medium" },
@@ -153,12 +153,10 @@ describe("App", () => {
       await user.click(screen.getByRole("button", { name: "Ask Coach" }));
       await screen.findByText("Nf3"); // complete state
 
-      // d2-d4 (white): FEN changes → App remounts CoachPanel via key={fen}
+      // d2-d4 (white): FEN changes but CoachPanel stays mounted — analysis persists
       await user.click(screen.getByTestId("make-move-btn"));
 
-      expect(
-        screen.getByText("Make a move, then ask the coach for guidance."),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Nf3")).toBeInTheDocument();
     });
   });
 });

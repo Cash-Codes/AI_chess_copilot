@@ -102,7 +102,6 @@ sequenceDiagram
     ChessBoard->>useGameState: makeMove(from, to)
     useGameState->>useGameState: chess.js validates move
     useGameState-->>ChessBoard: new FEN, updated state
-    Note over CoachPanel: key={fen} remounts CoachPanel,<br/>resetting it to idle state
 
     User->>CoachPanel: Clicks "Ask Coach"
     CoachPanel->>coachApi: streamAnalysis(req, callbacks)
@@ -156,10 +155,11 @@ sequenceDiagram
 
 **File:** [`apps/web/src/App.tsx`](../apps/web/src/App.tsx)
 
-`App` is the root component. It owns two pieces of state:
+`App` is the root component. It owns three pieces of state:
 
 - `useGameState()` — the chess board state (FEN, move history, whose turn it is)
 - `coachingMode` — which style the user has selected (`"balanced"` by default)
+- `voiceEnabled` — whether the voice readout is on or off
 
 ```tsx
 // App.tsx (simplified)
@@ -167,13 +167,15 @@ function App() {
   const { fen, moveHistory, sideToMove, lastOpponentMove, makeMove } =
     useGameState();
   const [coachingMode, setCoachingMode] = useState<CoachingMode>("balanced");
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
 
   return (
     <>
       <ChessBoard fen={fen} onMove={makeMove} />
       <CoachPanel
-        key={fen} // ← This is important — see note below
         coachingMode={coachingMode}
+        voiceEnabled={voiceEnabled}
+        onVoiceToggle={setVoiceEnabled}
         canAsk={lastOpponentMove !== null}
         fen={fen}
         moveHistory={moveHistory}
@@ -185,7 +187,7 @@ function App() {
 }
 ```
 
-**Why `key={fen}`?** In React, when a component's `key` prop changes, React **destroys and recreates** the component from scratch. This means every time the board position changes (a new move is made), `CoachPanel` resets completely — clearing any previous analysis, loading state, or errors. This is cleaner than manually resetting state inside an effect.
+**Why is `voiceEnabled` in `App` and not in `CoachPanel`?** `CoachPanel` is a long-lived component that persists across moves. If voice state lived inside the panel it would survive fine — but keeping it in `App` makes the preference clearly part of the session-level UI state alongside `coachingMode`, and it makes both easy to persist to `localStorage` later without touching `CoachPanel`.
 
 ---
 
@@ -381,13 +383,15 @@ window.speechSynthesis.speak(utterance);
 
 The hook tries to find a female voice by scanning available voice names for keywords like `"samantha"` (macOS), `"zira"` (Windows), `"female"` (Android). Voices load asynchronously in Chrome (via a `voiceschanged` event) but synchronously in Safari, so both paths are handled.
 
+**How voice state flows:** `voiceEnabled` is owned by `App` and passed down as a prop. `useSpeech` accepts it as a parameter (rather than managing its own `enabled` state), so the hook is a pure utility — it has no opinion about when speech is on or off.
+
 In `CoachPanel`, a `useEffect` watches for `status === "complete"` and fires the speech if voice is on:
 
 ```ts
 useEffect(() => {
-  if (status !== "complete" || !voiceOn) return;
+  if (status !== "complete" || !voiceEnabled) return;
   speak(`Consider ${partial.recommendedMove}. ${partial.summary}. Watch out: ${partial.risks?.[0]}`);
-}, [status, voiceOn, ...]);
+}, [status, voiceEnabled, ...]);
 ```
 
 ---
@@ -437,12 +441,17 @@ Starts an Express 5 server, attaches CORS and JSON body parsing middleware, and 
 
 The single route handler for `POST /api/coach/analyze`. Its job is to:
 
-1. Validate the request
-2. Decide real model vs. mock
-3. Stream the response back
+1. Rate-limit the request (20 requests per IP per minute)
+2. Validate the request
+3. Decide real model vs. mock
+4. Stream the response back
+
+A per-IP rate limiter (`express-rate-limit`) is applied directly on this route before any business logic runs. Each Gemini call has real GCP cost, so a burst of requests — accidental double-clicks, browser retries, or a bad actor — is capped before it reaches the model.
 
 ```ts
-coachRouter.post("/analyze", async (req, res) => {
+const analyzeLimiter = rateLimit({ windowMs: 60_000, max: 20 });
+
+coachRouter.post("/analyze", analyzeLimiter, async (req, res) => {
   const result = validateCoachRequest(req.body);
   if (!result.ok) {
     res.status(400).json({ error: "Invalid request.", details: result.errors });
@@ -691,7 +700,7 @@ Tests live alongside the code they test, under `src/test/` in each app.
 - Component tests use `render()` and assert on DOM output
 - `streamAnalysis` is mocked with `vi.mock` — tests never make real HTTP calls
 - Streaming is simulated by calling `callbacks.onChunk()` synchronously in the mock
-- State reset tests verify that `key={fen}` correctly remounts the panel
+- An integration test in `App.test.tsx` verifies that the previous analysis persists (is still visible) after the user makes a new move
 
 **Backend** (`apps/api`) — Vitest + supertest:
 
@@ -714,15 +723,17 @@ The pre-push git hook runs the full test suite before every push, so broken test
 
 ## 11. Key design decisions and trade-offs
 
-| Decision                              | Why                                                                     | Trade-off                                                           |
-| ------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| NDJSON over POST instead of SSE       | Simpler — no special event-stream handling, works with standard `fetch` | SSE has native browser reconnect; NDJSON doesn't                    |
-| `key={fen}` to reset state            | Eliminates a `useEffect` that called `setState` (React anti-pattern)    | Remounting destroys and recreates DOM — acceptable cost here        |
-| Single `CoachState` object            | One `setState` call instead of three — avoids cascading renders         | Slightly less granular updates                                      |
-| Structured JSON output schema         | Dramatically reduces malformed model output vs. free-form prompting     | Schema constrains the model's output format but not content quality |
-| Mock fallback for missing credentials | Frontend development works without a GCP account                        | Mock responses don't reflect real AI quality                        |
-| Prompt-level coaching modes           | No separate logic branches — simple to add new modes                    | Model may not reliably follow style instructions on every response  |
-| `USER_SIDE = "white"` constant        | Flipping user side later requires changing one line                     | V1 only works as White                                              |
+| Decision                                 | Why                                                                                   | Trade-off                                                           |
+| ---------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| NDJSON over POST instead of SSE          | Simpler — no special event-stream handling, works with standard `fetch`               | SSE has native browser reconnect; NDJSON doesn't                    |
+| `voiceEnabled` lifted to `App`           | Persists across moves; sits naturally beside `coachingMode` as session-level UI state | Voice toggle is one level removed from the hook that uses it        |
+| `useSpeech` accepts `enabled` as a param | Keeps the hook stateless — `App` is the single source of truth                        | Callers must own the boolean rather than just calling `setEnabled`  |
+| Single `CoachState` object               | One `setState` call instead of three — avoids cascading renders                       | Slightly less granular updates                                      |
+| Per-IP rate limit on `/analyze`          | Caps GCP cost from bursts before they reach the model                                 | Legitimate power users could hit the limit during rapid analysis    |
+| Structured JSON output schema            | Dramatically reduces malformed model output vs. free-form prompting                   | Schema constrains the model's output format but not content quality |
+| Mock fallback for missing credentials    | Frontend development works without a GCP account                                      | Mock responses don't reflect real AI quality                        |
+| Prompt-level coaching modes              | No separate logic branches — simple to add new modes                                  | Model may not reliably follow style instructions on every response  |
+| `USER_SIDE = "white"` constant           | Flipping user side later requires changing one line                                   | V1 only works as White                                              |
 
 ---
 

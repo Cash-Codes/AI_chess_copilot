@@ -9,6 +9,7 @@ function App() {
   const { fen, moveHistory, sideToMove, lastOpponentMove, userSide, makeMove } =
     useGameState();
   const [coachingMode, setCoachingMode] = useState<CoachingMode>("balanced");
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
 
   return (
     <div id="app">
@@ -25,9 +26,10 @@ function App() {
         </section>
         <aside className="side-panel">
           <CoachPanel
-            key={fen}
             coachingMode={coachingMode}
             onCoachingModeChange={setCoachingMode}
+            voiceEnabled={voiceEnabled}
+            onVoiceToggle={setVoiceEnabled}
             canAsk={lastOpponentMove !== null}
             fen={fen}
             moveHistory={moveHistory}

@@ -21,6 +21,8 @@ const IDLE: CoachState = { status: "idle", partial: {}, error: null };
 interface CoachPanelProps {
   coachingMode: CoachingMode;
   onCoachingModeChange: (mode: CoachingMode) => void;
+  voiceEnabled: boolean;
+  onVoiceToggle: (on: boolean) => void;
   canAsk: boolean;
   fen: string;
   moveHistory: string[];
@@ -55,6 +57,8 @@ function applyChunk(
 export function CoachPanel({
   coachingMode,
   onCoachingModeChange,
+  voiceEnabled,
+  onVoiceToggle,
   canAsk,
   fen,
   moveHistory,
@@ -64,13 +68,7 @@ export function CoachPanel({
   const [{ status, partial, error }, setCoachState] =
     useState<CoachState>(IDLE);
   const abortRef = useRef<AbortController | null>(null);
-  const {
-    supported: speechSupported,
-    enabled: voiceOn,
-    setEnabled: setVoiceOn,
-    speak,
-    cancel,
-  } = useSpeech();
+  const { supported: speechSupported, speak, cancel } = useSpeech(voiceEnabled);
 
   // Abort any in-flight request on unmount
   useEffect(() => {
@@ -82,7 +80,7 @@ export function CoachPanel({
 
   // Auto-read when the response is complete and voice is on
   useEffect(() => {
-    if (status !== "complete" || !voiceOn) return;
+    if (status !== "complete" || !voiceEnabled) return;
     const move = partial.recommendedMove;
     const summary = partial.summary;
     const risk = partial.risks?.[0];
@@ -97,7 +95,7 @@ export function CoachPanel({
     speak(script);
   }, [
     status,
-    voiceOn,
+    voiceEnabled,
     partial.recommendedMove,
     partial.summary,
     partial.risks,
@@ -212,12 +210,12 @@ export function CoachPanel({
       <div className="coach-actions">
         {speechSupported && (
           <button
-            className={`voice-toggle-btn${voiceOn ? " voice-toggle-btn--on" : ""}`}
-            title={voiceOn ? "Voice on" : "Voice off"}
-            aria-pressed={voiceOn}
-            onClick={() => setVoiceOn((v) => !v)}
+            className={`voice-toggle-btn${voiceEnabled ? " voice-toggle-btn--on" : ""}`}
+            title={voiceEnabled ? "Voice on" : "Voice off"}
+            aria-pressed={voiceEnabled}
+            onClick={() => onVoiceToggle(!voiceEnabled)}
           >
-            {voiceOn ? "🔊" : "🔇"}
+            {voiceEnabled ? "🔊" : "🔇"}
           </button>
         )}
         <select

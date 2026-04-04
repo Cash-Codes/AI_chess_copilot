@@ -40,8 +40,10 @@ function deriveState(chess: Chess): GameState {
 }
 
 export function useGameState(): UseGameState {
-  const chessRef = useRef<Chess>(new Chess());
-
+  // chessRef holds the mutable engine used in event handlers (makeMove).
+  // Initial state is derived from a separate new Chess() so no ref is
+  // read or written during render — both always start at the same position.
+  const chessRef = useRef(new Chess());
   const [state, setState] = useState<GameState>(() => deriveState(new Chess()));
 
   function makeMove(from: string, to: string, promotion?: string): boolean {

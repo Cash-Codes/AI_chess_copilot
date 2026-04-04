@@ -64,6 +64,8 @@ function renderCoachPanel(
   overrides: Partial<{
     coachingMode: CoachingMode;
     onCoachingModeChange: (m: CoachingMode) => void;
+    voiceEnabled: boolean;
+    onVoiceToggle: (on: boolean) => void;
     canAsk: boolean;
     fen: string;
     moveHistory: string[];
@@ -74,6 +76,8 @@ function renderCoachPanel(
   const defaults = {
     coachingMode: "balanced" as CoachingMode,
     onCoachingModeChange: vi.fn(),
+    voiceEnabled: false,
+    onVoiceToggle: vi.fn(),
     canAsk: false,
     fen: INITIAL_FEN,
     moveHistory: [],
@@ -277,6 +281,8 @@ describe("CoachPanel", () => {
         <CoachPanel
           coachingMode="aggressive"
           onCoachingModeChange={vi.fn()}
+          voiceEnabled={false}
+          onVoiceToggle={vi.fn()}
           canAsk={true}
           fen={fen}
           moveHistory={moveHistory}
@@ -399,9 +405,8 @@ describe("CoachPanel", () => {
     });
   });
 
-  // The production reset is a full unmount/remount via key={fen} in App.tsx.
-  // rerender() cannot test that mechanism — it keeps the same component instance.
-  // This test simulates the unmount/remount to verify the panel starts fresh.
+  // rerender() keeps the same component instance, so we use unmount/remount
+  // to verify the panel's request state starts fresh after a position change.
   describe("resets on remount (via key prop change in App)", () => {
     it("returns to idle state after remounting following a completed analysis", async () => {
       simulateStream();

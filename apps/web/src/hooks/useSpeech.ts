@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 // Preferred female voice names in order of priority (platform-specific).
 // "female" catches any voice with that word in its name; the rest are
@@ -30,10 +30,9 @@ function pickFemaleVoice(
  * `supported` is false in environments where speechSynthesis isn't available.
  * All calls are no-ops when unsupported or when the user has toggled voice off.
  */
-export function useSpeech() {
+export function useSpeech(enabled: boolean) {
   const supported =
     typeof window !== "undefined" && "speechSynthesis" in window;
-  const [enabled, setEnabled] = useState(false);
   const [femaleVoice, setFemaleVoice] = useState<SpeechSynthesisVoice | null>(
     null,
   );
@@ -67,5 +66,5 @@ export function useSpeech() {
     if (supported) window.speechSynthesis.cancel();
   }, [supported]);
 
-  return { supported, enabled, setEnabled, speak, cancel };
+  return { supported, speak, cancel };
 }

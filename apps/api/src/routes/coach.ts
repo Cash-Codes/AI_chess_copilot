@@ -1,4 +1,5 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import { validateCoachRequest } from "../validation/coachRequest.js";
 import {
   streamMockResponse,
@@ -9,7 +10,15 @@ import { getVertexConfig } from "../services/modelClient.js";
 
 export const coachRouter = Router();
 
-coachRouter.post("/analyze", async (req, res) => {
+const analyzeLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests. Please wait a moment and try again." },
+});
+
+coachRouter.post("/analyze", analyzeLimiter, async (req, res) => {
   const result = validateCoachRequest(req.body);
 
   if (!result.ok) {
