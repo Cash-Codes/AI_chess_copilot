@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, act } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CoachPanel } from "../../components/CoachPanel";
 import type {
@@ -399,26 +399,27 @@ describe("CoachPanel", () => {
     });
   });
 
-  describe("resets on FEN change", () => {
-    it("returns to idle state when fen prop changes", () => {
+  // The production reset is a full unmount/remount via key={fen} in App.tsx.
+  // rerender() cannot test that mechanism — it keeps the same component instance.
+  // This test simulates the unmount/remount to verify the panel starts fresh.
+  describe("resets on remount (via key prop change in App)", () => {
+    it("returns to idle state after remounting following a completed analysis", async () => {
       simulateStream();
-      const { rerender } = renderCoachPanel({
+      const user = userEvent.setup();
+      const { unmount } = renderCoachPanel({
         canAsk: true,
         lastOpponentMove: "e5",
       });
 
-      act(() => {
-        rerender(
-          <CoachPanel
-            coachingMode="balanced"
-            onCoachingModeChange={vi.fn()}
-            canAsk={false}
-            fen="rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
-            moveHistory={["e4"]}
-            sideToMove="black"
-            lastOpponentMove={null}
-          />,
-        );
+      await user.click(screen.getByRole("button", { name: "Ask Coach" }));
+      await screen.findByText("Nf3"); // complete state
+
+      unmount();
+
+      renderCoachPanel({
+        canAsk: false,
+        fen: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+        lastOpponentMove: null,
       });
 
       expect(
