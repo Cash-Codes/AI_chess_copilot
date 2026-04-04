@@ -85,6 +85,20 @@ npm run dev
 Frontend: http://localhost:5173  
 API: http://localhost:3001
 
+## Testing
+
+Tests live in `apps/web/src/test/` and use [Vitest](https://vitest.dev/) + [React Testing Library](https://testing-library.com/).
+
+```bash
+# Run tests once
+npm run test --workspace=apps/web
+
+# Watch mode (re-runs on file changes)
+npm run test:watch --workspace=apps/web
+```
+
+Tests run automatically on every pull request via GitHub Actions (see `.github/workflows/ci.yml`).
+
 ## Environment variables
 
 | Variable            | Description                                                |

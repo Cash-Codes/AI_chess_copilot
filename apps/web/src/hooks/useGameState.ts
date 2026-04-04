@@ -9,19 +9,33 @@ export interface GameState {
   moveHistory: string[];
   sideToMove: SideToMove;
   lastOpponentMove: string | null;
+  userSide: SideToMove;
 }
 
 export interface UseGameState extends GameState {
   makeMove: (from: string, to: string, promotion?: string) => boolean;
 }
 
+// V1: the local player always controls white; the opponent is black.
+// Changing this constant is the only thing needed to flip sides later.
+const USER_SIDE: SideToMove = "white";
+
 function deriveState(chess: Chess): GameState {
   const history = chess.history();
+
+  // Opponent moves sit at odd indices when the user is white:
+  //   history[0] = user (white), history[1] = opponent (black), …
+  // If the user were black the parity would flip (0 = opponent, 1 = user).
+  const opponentParity = USER_SIDE === "white" ? 1 : 0;
+  const lastOpponentMove =
+    history.filter((_, i) => i % 2 === opponentParity).at(-1) ?? null;
+
   return {
     fen: chess.fen(),
     moveHistory: history,
     sideToMove: chess.turn() === "w" ? "white" : "black",
-    lastOpponentMove: history.length > 0 ? history[history.length - 1] : null,
+    lastOpponentMove,
+    userSide: USER_SIDE,
   };
 }
 
