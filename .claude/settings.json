@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./node_modules/.bin/prettier --check apps/web/src/index.css apps/web/src/App.css apps/web/index.html)",
+      "Bash(./node_modules/.bin/prettier --write apps/web/src/index.css apps/web/src/App.css apps/web/index.html apps/web/public/favicon.svg)"
+    ]
+  }
+}

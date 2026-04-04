@@ -240,7 +240,7 @@ export function CoachPanel({
         </select>
         <button
           className="ask-coach-btn"
-          disabled={!canAsk || !lastOpponentMove || status === "streaming"}
+          disabled={!canAsk || status === "streaming"}
           onClick={handleAskCoach}
         >
           {status === "streaming" ? "Thinking…" : "Ask Coach"}

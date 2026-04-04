@@ -1,8 +1,8 @@
 # AI Chess Copilot
 
-A thin, polished AI copilot for chess that demonstrates real-time coaching, LLM orchestration and full-stack product execution.
+A thin, polished AI copilot for chess that demonstrates real-time coaching, LLM orchestration, and full-stack product execution.
 
-The user plays chess in the browser. After the opponent moves, they click **Ask Coach** to get a streamed AI response with a recommended move, alternatives, reasoning and risks — in a chosen coaching style.
+The user plays White against themselves (or a friend on the same board). After the opponent moves, they click **Ask Coach** to get a streamed AI response with a recommended move, alternatives, reasoning, and risks — in a chosen coaching style (balanced / aggressive / defensive).
 
 ## Architecture
 
@@ -16,57 +16,59 @@ packages/
   shared/   Shared TypeScript types (@ai-chess-copilot/shared)
 ```
 
-**Frontend modules** (`apps/web/src/`):
+**Frontend** (`apps/web/src/`):
 
-- `ChessBoard` — interactive board, legal move enforcement, FEN state
-- `CoachPanel` — displays streaming AI response, coaching mode selector
-- `MoveHistory` — scrollable move list
-- `useGameState` — board state, move tracking, opponent detection
-- `useCoachRequest` — sends position to API, handles streaming response
+| Module         | Responsibility                                                        |
+| -------------- | --------------------------------------------------------------------- |
+| `ChessBoard`   | Interactive board, legal move enforcement, drag-and-drop              |
+| `CoachPanel`   | Streaming AI response, coaching mode selector, voice toggle           |
+| `MoveHistory`  | Scrollable move list                                                  |
+| `useGameState` | Board FEN, move history, side-to-move, opponent move detection        |
+| `useSpeech`    | Web Speech API wrapper — female voice preference, async voice loading |
+| `coachApi`     | `streamAnalysis()` — NDJSON streaming over POST                       |
 
-**Backend modules** (`apps/api/src/`):
+**Backend** (`apps/api/src/`):
 
-- `routes/coach.ts` — `POST /api/coach/analyze` handler
-- `services/chessContext.ts` — normalizes FEN, move history, side to move
-- `services/coachOrchestrator.ts` — multi-stage prompt pipeline
-- `services/modelClient.ts` — Claude API streaming client
-- `types/coach.ts` — request/response schema validation
+| Module                          | Responsibility                                                        |
+| ------------------------------- | --------------------------------------------------------------------- |
+| `routes/coach.ts`               | `POST /api/coach/analyze` — validates, routes to model or mock        |
+| `services/chessContext.ts`      | Derives game phase, recent moves, context string from request         |
+| `services/coachOrchestrator.ts` | Prompt construction, model call, output validation, retry/fallback    |
+| `services/modelClient.ts`       | VertexAI (Gemini) client — structured JSON output via response schema |
+| `services/mockCoach.ts`         | Mode-aware mock responses with simulated streaming delays             |
+| `validation/coachRequest.ts`    | Request schema validation                                             |
 
-**Orchestration pipeline** (5 stages):
+**Request flow:**
 
-1. Input normalization — validate and compact the game context
-2. Position summarization — phase, key tensions, development themes
-3. Candidate move generation — practical options for the position
-4. Coaching explanation — best move, alternatives, reasoning, risks
-5. Response shaping — validate JSON schema; retry or fallback on failure
+```
+Browser → POST /api/coach/analyze
+  → validateCoachRequest
+  → orchestrateCoachResponse (if VERTEX_PROJECT set)
+      → deriveGameContext → buildPrompt → Gemini (structured JSON)
+      → isValidOutput? → retry once with stronger instruction if not
+      → toSafeResponse fallback if retry also fails
+  → streamResponseAsNdjson (real) or streamMockResponse (mock)
+  → NDJSON chunks → CoachPanel progressive render
+```
 
 ## API
 
 `POST /api/coach/analyze`
 
-```json
-// Request
-{
-  "fen": "rnbqkbnr/pppp1ppp/8/4p3/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 2",
-  "moveHistory": ["e4", "e5"],
-  "lastOpponentMove": "e5",
-  "sideToMove": "white",
-  "coachingMode": "balanced"
-}
+Streams `application/x-ndjson`. Each line is one JSON chunk:
 
-// Response
-{
-  "recommendedMove": "Nf3",
-  "alternativeMoves": ["Bc4", "d4"],
-  "summary": "Develop a piece, contest the center, and keep flexible options.",
-  "reasoning": ["Nf3 develops naturally and pressures the center.", "..."],
-  "risks": ["Don't overextend with too many pawn pushes before development."],
-  "confidence": "medium",
-  "style": "balanced"
-}
+```jsonc
+// Chunks arrive progressively as the response is built:
+{ "type": "move",         "value": "Nf3" }
+{ "type": "alternatives", "value": ["Bc4", "d4"] }
+{ "type": "confidence",   "value": "medium" }
+{ "type": "summary",      "value": "Develop a piece and contest the center." }
+{ "type": "reasoning",    "value": ["Nf3 develops naturally...", "..."] }
+{ "type": "risks",        "value": ["Watch out for ...Bc5 targeting f2."] }
+{ "type": "style",        "value": "balanced" }
 ```
 
-Coaching modes: `balanced` | `aggressive` | `defensive` — influence prompt style only.
+Coaching modes: `balanced` | `aggressive` | `defensive` — shape the model prompt, not separate logic branches.
 
 ## Setup
 
@@ -81,8 +83,7 @@ npm install
 The API uses Vertex AI (Gemini) via [Application Default Credentials (ADC)](https://cloud.google.com/docs/authentication/application-default-credentials). You need the `gcloud` CLI installed and a GCP project with the Vertex AI API enabled.
 
 ```bash
-# Install gcloud CLI (if not already installed)
-# https://cloud.google.com/sdk/docs/install
+# Install gcloud CLI: https://cloud.google.com/sdk/docs/install
 
 # Log in and set up ADC
 gcloud auth login
@@ -91,7 +92,7 @@ gcloud auth application-default login
 # Set your active project
 gcloud config set project YOUR_GCP_PROJECT_ID
 
-# Enable the Vertex AI API on your project (one-time)
+# Enable the Vertex AI API (one-time per project)
 gcloud services enable aiplatform.googleapis.com
 ```
 
@@ -108,7 +109,7 @@ Edit `.env` and set `VERTEX_PROJECT` to your GCP project ID:
 ```
 VERTEX_PROJECT=your-gcp-project-id   # required to enable real model calls
 VERTEX_LOCATION=us-central1          # optional, defaults to us-central1
-VERTEX_MODEL=gemini-2.0-flash-001    # optional, defaults to gemini-2.0-flash-001
+VERTEX_MODEL=gemini-2.5-flash        # optional, defaults to gemini-2.5-flash
 ```
 
 **Without `VERTEX_PROJECT`** the API falls back to mock responses — no GCP account needed for local frontend development.
@@ -134,9 +135,9 @@ npm test
 npm run test:web
 npm run test:api
 
-# Watch mode
-npm --workspace apps/web run test:watch
-npm --workspace apps/api run test:watch
+# Watch mode (within a workspace)
+npm --workspace apps/web run test
+npm --workspace apps/api run test
 ```
 
 Both test suites run in parallel on every pull request via GitHub Actions (see `.github/workflows/ci.yml`).
@@ -150,25 +151,25 @@ Both test suites run in parallel on every pull request via GitHub Actions (see `
 | `CORS_ORIGIN`     | `http://localhost:5173` | Allowed frontend origin for CORS                      |
 | `VERTEX_PROJECT`  | —                       | GCP project ID — **required** to enable real AI calls |
 | `VERTEX_LOCATION` | `us-central1`           | GCP region for Vertex AI                              |
-| `VERTEX_MODEL`    | `gemini-2.0-flash-001`  | Gemini model ID                                       |
+| `VERTEX_MODEL`    | `gemini-2.5-flash`      | Gemini model ID                                       |
 
-Authentication is handled by [ADC](https://cloud.google.com/docs/authentication/application-default-credentials) — run `gcloud auth application-default login` once. No API key file required.
+Authentication is via [ADC](https://cloud.google.com/docs/authentication/application-default-credentials) — run `gcloud auth application-default login` once. No API key file required.
 
 ## V1 trade-offs
 
-**Intentionally excluded from V1:**
+**What was intentionally left out:**
 
 - Authentication, persistent accounts, database
-- RAG, vector storage, retrieval over openings/tactics
-- WebSocket / WebRTC (SSE streaming is sufficient for V1)
-- Multiplayer, OCR, mobile optimization, deployment infra
+- RAG, vector storage, or retrieval over openings/tactics
+- Server-Sent Events or WebSockets (NDJSON over POST is sufficient for V1)
+- Multiplayer, board OCR, mobile optimization, deployment infra
 
-**Why:** V1 targets the copilot layer — real-time AI assistance, orchestration quality and product clarity.
+**Why:** V1 targets the copilot layer — real-time AI assistance, prompt quality, streaming UX, and production-grade fallback handling.
 
 ## Future (V2+)
 
-- Voice input and richer real-time interaction (WebRTC)
 - Persistent session history and player profiling
-- Retrieval over openings, tactics, prior games
-- Frame-based visual understanding for games without exposed state
-- Multimodal support
+- Retrieval over openings, tactics, and prior games
+- Opponent-side analysis ("what is my opponent likely planning?")
+- Speech input for hands-free play
+- Multimodal support for games without exposed FEN state
