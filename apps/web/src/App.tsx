@@ -6,7 +6,8 @@ import { CoachPanel } from "./components/CoachPanel";
 import "./App.css";
 
 function App() {
-  const { fen, moveHistory, makeMove } = useGameState();
+  const { fen, moveHistory, sideToMove, lastOpponentMove, userSide, makeMove } =
+    useGameState();
   const [coachingMode, setCoachingMode] = useState<CoachingMode>("balanced");
 
   return (
@@ -26,9 +27,24 @@ function App() {
           <CoachPanel
             coachingMode={coachingMode}
             onCoachingModeChange={setCoachingMode}
-            canAsk={moveHistory.length > 0}
+            canAsk={lastOpponentMove !== null}
           />
           <MoveHistory moves={moveHistory} />
+          <details className="coach-context-debug">
+            <summary>Coach context</summary>
+            <dl>
+              <dt>playing as</dt>
+              <dd>{userSide}</dd>
+              <dt>side to move</dt>
+              <dd>{sideToMove}</dd>
+              <dt>last opponent move</dt>
+              <dd>{lastOpponentMove ?? "—"}</dd>
+              <dt>move count</dt>
+              <dd>{moveHistory.length}</dd>
+              <dt>fen</dt>
+              <dd className="fen">{fen}</dd>
+            </dl>
+          </details>
         </aside>
       </main>
     </div>
