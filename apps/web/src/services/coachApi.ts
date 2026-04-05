@@ -3,6 +3,7 @@ import type {
   CoachStreamChunk,
 } from "@ai-chess-copilot/shared";
 
+// Empty string means same-origin (production). Falls back to localhost for dev.
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
 const TIMEOUT_MS = 15_000;
 

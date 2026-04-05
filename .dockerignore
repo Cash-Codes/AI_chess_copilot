@@ -1,0 +1,24 @@
+# Dependencies — reinstalled inside the image
+node_modules
+apps/*/node_modules
+packages/*/node_modules
+
+# Build outputs — rebuilt inside the image
+apps/*/dist
+packages/*/dist
+
+# Local environment — secrets must be injected at runtime, never baked in
+.env
+.env.*
+
+# Dev/tooling artefacts
+.git
+.gitignore
+.claude
+.husky
+docs
+*.md
+coverage
+
+# macOS
+.DS_Store
