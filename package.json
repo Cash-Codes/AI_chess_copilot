@@ -23,6 +23,7 @@
     "test": "npm run test:web && npm run test:api",
     "test:web": "npm --workspace apps/web run test",
     "test:api": "npm --workspace apps/api run test",
+    "build:docker": "npm --workspace apps/web run build && npm --workspace apps/api run build",
     "prepare": "husky"
   },
   "name": "ai-chess-copilot",

@@ -1,6 +1,34 @@
-# AI Chess Copilot
+# ♟️ AI Chess Copilot
 
-A thin, polished AI copilot for chess that demonstrates real-time coaching, LLM orchestration, and full-stack product execution.
+Real-time AI chess coach with streaming analysis.
+
+## 🚀 Live Demo
+
+👉 https://ai-chess-copilot-566371636656.europe-west2.run.app/
+
+## 🎥 Demo
+
+![Demo](./demo.gif)
+
+## ✨ Features
+
+- Real-time streaming analysis (NDJSON)
+- React + Vite frontend
+- Node + Express backend
+- Gemini-powered coaching
+
+## 🖼️ Screenshots
+
+![Main UI](./screenshots/main.png)
+![Context](./screenshots/context.png)
+![Analysis](./screenshots/analysis.png)
+
+## 🧠 Tech Stack
+
+- React + TypeScript
+- Node + Express
+- Vertex AI (Gemini)
+- Streaming (NDJSON)
 
 The user plays White against themselves (or a friend on the same board). After the opponent moves, they click **Ask Coach** to get a streamed AI response with a recommended move, alternatives, reasoning, and risks — in a chosen coaching style (balanced / aggressive / defensive).
 
@@ -69,6 +97,17 @@ Streams `application/x-ndjson`. Each line is one JSON chunk:
 ```
 
 Coaching modes: `balanced` | `aggressive` | `defensive` — shape the model prompt, not separate logic branches.
+
+## 🤖 AI Integration
+
+- Uses Gemini (Vertex AI) for real analysis
+- Demo runs in **mock mode by default** for reliability
+- Real model can be enabled via environment variables
+
+This ensures:
+
+- Consistent demo experience
+- No dependency on API quotas or latency
 
 ## Setup
 
