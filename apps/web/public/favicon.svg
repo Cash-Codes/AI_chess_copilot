@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="7" fill="#131110"/>
+  <!-- subtle board hint: two dark squares in corners -->
+  <rect x="2" y="2" width="6" height="6" rx="1" fill="#1e1c17" opacity="0.8"/>
+  <rect x="24" y="24" width="6" height="6" rx="1" fill="#1e1c17" opacity="0.8"/>
+  <!-- chess knight ♞ -->
+  <text
+    x="16" y="16"
+    text-anchor="middle"
+    dominant-baseline="central"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="20"
+    fill="#c8921e"
+  >♞</text>
+</svg>

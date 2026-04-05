@@ -1,0 +1,10 @@
+#!/bin/sh
+
+# VS Code's git integration strips PATH — load nvm so 'node' is available
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" --no-use
+
+# Ensure the active nvm node version is on PATH
+export PATH="$NVM_DIR/versions/node/$(ls "$NVM_DIR/versions/node" | tail -1)/bin:$PATH"
+
+./node_modules/.bin/lint-staged

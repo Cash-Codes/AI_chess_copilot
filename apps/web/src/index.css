@@ -1,0 +1,104 @@
+/* ── Design tokens ───────────────────────────────────────── */
+
+:root {
+  /* Typography */
+  --sans: "DM Sans", system-ui, -apple-system, sans-serif;
+  --serif: "Cormorant", Georgia, "Times New Roman", serif;
+  --mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+
+  /* Dark scheme (default — chess tools live in the dark) */
+  --bg: #0c0b09;
+  --bg-surface: #131110;
+  --bg-raised: #1c1a16;
+  --bg-hover: #242018;
+  --border-subtle: #1e1c17;
+  --border: #2c2820;
+  --border-strong: #3d3829;
+  --text-dim: #6a5c47;
+  --text: #9e8a6d;
+  --text-bright: #d4bf9d;
+  --text-head: #f0e2c4;
+  --gold: #c8921e;
+  --gold-muted: rgba(200, 146, 30, 0.12);
+  --gold-border: rgba(200, 146, 30, 0.28);
+  --gold-bright: #e0aa3a;
+  --green: #4d8c5e;
+  --green-muted: rgba(77, 140, 94, 0.12);
+  --green-border: rgba(77, 140, 94, 0.3);
+  --red: #c05a3a;
+  --red-muted: rgba(192, 90, 58, 0.1);
+  --red-border: rgba(192, 90, 58, 0.25);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f7f1e5;
+    --bg-surface: #efe8d6;
+    --bg-raised: #e7dfc8;
+    --bg-hover: #ddd5be;
+    --border-subtle: #dcd4be;
+    --border: #c9bfa5;
+    --border-strong: #b3a688;
+    --text-dim: #9b856a;
+    --text: #6b5540;
+    --text-bright: #3c2d1c;
+    --text-head: #1e1408;
+    --gold: #9a6e12;
+    --gold-muted: rgba(154, 110, 18, 0.1);
+    --gold-border: rgba(154, 110, 18, 0.3);
+    --gold-bright: #b07e1c;
+    --green: #3d7248;
+    --green-muted: rgba(61, 114, 72, 0.1);
+    --green-border: rgba(61, 114, 72, 0.3);
+    --red: #8b3820;
+    --red-muted: rgba(139, 56, 32, 0.08);
+    --red-border: rgba(139, 56, 32, 0.25);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
+  }
+}
+
+/* ── Base reset ──────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark light;
+}
+
+body {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+
+  /* subtle chess board texture */
+  background-image:
+    linear-gradient(45deg, rgba(200, 146, 30, 0.018) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(200, 146, 30, 0.018) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(200, 146, 30, 0.018) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(200, 146, 30, 0.018) 75%);
+  background-size: 10px 10px;
+  background-position:
+    0 0,
+    0 5px,
+    5px -5px,
+    -5px 0;
+}
+
+#root {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
