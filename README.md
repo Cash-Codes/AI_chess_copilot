@@ -1,6 +1,7 @@
 # ♟️ AI Chess Copilot
 
 Real-time AI chess coach with streaming analysis.
+
 [![CI](https://github.com/Cash-Codes/AI_chess_copilot/actions/workflows/ci.yml/badge.svg)](https://github.com/Cash-Codes/AI_chess_copilot/actions/workflows/ci.yml)
 ![React](https://img.shields.io/badge/React-19-61DAFB?style=flat&logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat&logo=typescript&logoColor=white)
